@@ -11,31 +11,6 @@ volatile char idleFlag = 0;			// states the controller is idle
 volatile char requestLevelFlag = 0;	// main loop notified that the level is to be requested
 volatile char faderLevel = 0;		// used to store fader level
 
-void clockInit(void) {
-	/* Setting clocks to:
-	 * MCLK = SMCLK = 1MHz
-	 * ACLK = 12kHz
-	 */
-    DCOCTL = CALDCO_1MHZ;		// set DCO to 1MHz
-    BCSCTL1 = CALBC1_1MHZ;		// set DCO Range Sel correctly
-    BCSCTL1 |= DIVA_0;			// ACLK-divider off
-    BCSCTL2 = SELM_0 + DIVM_0 + DIVS_0; // MCLK <- DCO, clock input dividers off
-
-
-    BCSCTL3 = LFXT1S_2;		// source ACLK from internal VLO @ 12kHz / divider
-//    BCSCTL3 = LFXT1S_0 + XCAP_3; // source ACLK from external 32762Hz-osc.
-    __delay_cycles(800000);
-}
-
-/** Timer TA0 is used for ALPS-knob debounce */
-#define TA0_START {TA0R = 0; TA0CTL |= MC0;}
-#define TA0_STOP {TA0CTL &= ~MC0;}
-void TA0Init(void){
-	/* Timer runs @ 1500Hz */
-	TA0CTL = TASSEL_1 + ID_3 + MC_0 + TAIE; // ACLK is source, divider /8, timer halted, periode interrupt one
-	TA0CCR0 = 150;	// 1/10 sec at this timer frequ.
-}
-
 /** Timer TA1 is used for cyclic fader level request if uC is idle */
 #define TA1_START {TA1R = 0; TA1CTL |= MC0;}
 #define TA1_STOP {TA1CTL &= ~MC0;}
@@ -47,31 +22,6 @@ void TA1Init(void){
 }
 
 
-/**The Alps knob is connected to pins 2.0, 2.1 and 2.2 where 2.1 is the push
- * and the others are the turn indications. Only interrupt on 2.0 is enabled.
- * Operation mode on interrupt is:
- * 2.2 high and 2.1 low: reduce volume by 1
- * 2.2 high and 2.1 high: reduce volume by 3
- * 2.2 low and 2.1 low: increase vol by 1
- * 2.2 low and 2.1 high: increase vol by 3
- *
- * Relatively slowly manual operation allows for complete message sending
- * before next input interrupt is accepted.
- */
-void knobSetup(){
-	// Set up pins 2.0, 2.1 and 2.2 for digital input with pull-down resistors
-	P2SEL &= ~(BIT0 + BIT1 + BIT2);
-	P2SEL2 &= ~(BIT0 + BIT1 + BIT2);
-	P2DIR &= ~(BIT0 + BIT1 + BIT2);
-	P2REN |= (BIT0 + BIT1 + BIT2);
-	P2OUT &= ~(BIT0 + BIT1 + BIT2);
-	// Enable input interrupts for pin 2.0 only, clear interrupt flags
-	P2IE = BIT0;
-	P2IES |= BIT0;
-	P2IFG &= ~BIT0;
-
-	TA0Init();
-}
 
 void nixieSetup(){
 	// define nixie enable pin as output, turned off
@@ -157,45 +107,7 @@ void getCorrectedFaderLevel(){
 }
 */
 
-/**ISR for Alps knob operation */
-#pragma vector=PORT2_VECTOR
-__interrupt void Port_2(void){
-	// Disable interrupt until handling complete
-	P2IE &= ~BIT0;
 
-	TA0_START	// ebable anti-beat timer
-
-	// reset idle flag
-	idleFlag = 0;
-
-	// Execute Command
-	if(P2IN & BIT2){
-		if(P2IN & BIT1){
-			UartPutStr("@FADER +3\r", 10);
-		}
-		else{
-			UartPutStr("@FADER +1\r", 10);
-		}
-	}
-	else if(~(P2IN & BIT2)){
-		if(P2IN & BIT1){
-			UartPutStr("@FADER -3\r", 10);
-		}
-		else{
-			UartPutStr("@FADER -1\r", 10);
-		}
-	}
-}
-
-/** ISR for timer-based anti-beat */
-#pragma vector=TIMER0_A0_VECTOR
-__interrupt void TA0_A0_ISR(void) {
-	TA0_STOP
-	// Clear knob interrupt flag and reenable interrupt
-	P2IFG &= ~BIT0;
-	P2IE |= BIT0;
-	idleFlag = 1;
-}
 
 /** ISR for idle-state diplay update */
 #pragma vector=TIMER1_A0_VECTOR
