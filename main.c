@@ -1,8 +1,9 @@
 #include <msp430.h> 
 #include  "msp430g2553.h"
-#include "fsRemoteFaderFunctionality.h"
 
-void
+#include "uartbuf.h"
+#include "nixie-disp.h"
+
 static inline void
 clockInit(void) {
 	/* Setting clocks to:
@@ -20,25 +21,24 @@ clockInit(void) {
     __delay_cycles(800000);
 }
 
+volatile char faderLevel = 0;		// used to store fader level
+volatile char lastFaderLevel = 1;
+
 int
 main(void) {
     WDTCTL = WDTPW | WDTHOLD;	// Stop watchdog timer
 
     clockInit();
-//    UART_Init(&faderLevel);
+    UART_Init(&faderLevel);
     nixieSetup();
     __enable_interrupt();
 
     faderLevel = 0;
-    char lastFaderLevel = 1;
     while(1){
     	if(faderLevel != lastFaderLevel){
-    		nixieWrite();
+    		nixieWrite(faderLevel);
     	}
     	lastFaderLevel = faderLevel;
-    	faderLevel++;
-    	if (faderLevel > 99) faderLevel = 0;
-    	__delay_cycles(100000);
     }
 }
 
