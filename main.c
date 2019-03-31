@@ -1,8 +1,8 @@
 #include <msp430.h> 
-#include  "msp430g2553.h"
+#include "msp430g2553.h"
 
-#include "uartbuf.h"
 #include "nixie-disp.h"
+#include "ap20-ifc.h"
 
 static inline void
 clockInit(void) {
@@ -21,7 +21,6 @@ clockInit(void) {
     __delay_cycles(800000);
 }
 
-volatile char faderLevel = 0;		// used to store fader level
 volatile char lastFaderLevel = 1;
 
 int
@@ -29,16 +28,20 @@ main(void) {
     WDTCTL = WDTPW | WDTHOLD;	// Stop watchdog timer
 
     clockInit();
-    UART_Init(&faderLevel);
+    ap20_init();
     nixieSetup();
     __enable_interrupt();
 
-    faderLevel = 0;
     while(1){
-    	if(faderLevel != lastFaderLevel){
-    		nixieWrite(faderLevel);
+        /* see if the AP20 gave something over UART */
+        ap20_process_bytes();
+        const uint8_t current_lvl = ap20_current_level();
+    	if(current_lvl != lastFaderLevel){
+    	    P2OUT &= ~BIT2;
+    		nixieWrite(current_lvl);
+    	    P2OUT |= BIT2;
     	}
-    	lastFaderLevel = faderLevel;
+    	lastFaderLevel = current_lvl;
     }
 }
 
