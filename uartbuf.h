@@ -1,9 +1,15 @@
 #ifndef UART_h
-	#define UART_h
+#define UART_h
 
-void UART_Init(volatile char* targetPos);
+#include <stdbool.h>
+
+#define UART_BUFFER_SIZE 16
+
+void UART_Init(void);
 
 void UartPutChar(char character);
 void UartPutStr(char* str, int length);
+
+bool UartGetNext(char* c);
 
 #endif  //UART_h

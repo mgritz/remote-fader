@@ -1,23 +1,13 @@
 #include "uartbuf.h"
-#include <stdlib.h>
-#include <string.h>
 #include "msp430g2553.h"
 
-#define LISTEN_STATE 0
-#define NUMBER_STATE 1
-#define DONE_STATE 2
+#include <ring-buffer.h>
 
-//volatile char rxBuffer[RXBUFFERSIZE];
-//volatile unsigned int rxBufferFirstChar = 0;
-//volatile unsigned int rxBufferLastChar = 0;
-//volatile char rxBufferFull = 0;
+RING_BUFFER_API(bbuf, char)
+RING_BUFFER(bbuf, char)
 
-char magicWord[6] = "FADER ";
-char* mwPos = magicWord;
-char rxedNumber[2] = "00";
-char* rxPos = rxedNumber;
-char state = LISTEN_STATE;
-volatile char* faderLevelPtr = 0;
+char rx_buffer_mem[UART_BUFFER_SIZE];
+bbuf rx_buffer;
 
 /************************************************************************************************************
  * 																											*
@@ -30,10 +20,11 @@ volatile char* faderLevelPtr = 0;
  * 5) Enable interrupts (optional) via UCAxRXIE and/or UCAxTXIE												*
  * 																											*
  ************************************************************************************************************/
-void UART_Init(volatile char* targetPos)
+void UART_Init(void)
 {
-	faderLevelPtr = targetPos;
-	
+    // prepare rx buffer
+    bbuf_init(&rx_buffer, rx_buffer_mem, UART_BUFFER_SIZE);
+
 	// configure pins as UART
 	P1SEL |= BIT1 | BIT2;
 	P1SEL2 |= BIT1 | BIT2;
@@ -52,8 +43,8 @@ void UART_Init(volatile char* targetPos)
 	// enable RX interrupt
 	IE2 |= UCA0RXIE;
 
-	P2DIR |= BIT0;
-	P2OUT |= BIT0;
+	P2DIR |= BIT0 | BIT1 | BIT2;
+	P2OUT |= BIT0 | BIT1 | BIT2;
 }
 
 void UartPutChar(char character){
@@ -73,27 +64,15 @@ void UartPutStr(char* str, int length){
 __interrupt void USCI0RX_ISR(void)
 {
 	P2OUT &= ~BIT0;
-	switch (state){
-	case LISTEN_STATE:	// waiting for magic word to complete
-		if(*mwPos++ != UCA0RXBUF){
-				mwPos = magicWord;
-		}
-		else if(mwPos - magicWord == 6){
-			mwPos = magicWord;
-			state = NUMBER_STATE;
-		}
-		break;
-	case NUMBER_STATE:
-		*rxPos++ = UCA0RXBUF;
-		if(rxPos - rxedNumber == 2){
-			state = DONE_STATE; 	// this may also take longer since we are done receiving
-			if(faderLevelPtr != 0){
-				*faderLevelPtr = (char)(atoi(rxedNumber));
-			}
-			rxPos = rxedNumber;
-			state = LISTEN_STATE;
-		}
-	}
+	bbuf_put(&rx_buffer, UCA0RXBUF);
 	P2OUT |= BIT0;
 }
 
+bool UartGetNext(char* c)
+{
+    __disable_interrupt();
+    const bool rc = !bbuf_empty(&rx_buffer);
+    *c = bbuf_get(&rx_buffer);
+    __enable_interrupt();
+    return rc;
+}
