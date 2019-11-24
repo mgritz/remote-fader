@@ -1,11 +1,48 @@
 #include "i2c.h"
 
-#include <msp430.h>
+#include "msp430g2553.h"
 
 #include "port-helpers.h"
 
 #define SCL BIT6
 #define SDA BIT7
+
+static volatile unsigned char i2c_fault = 0;
+
+
+/** Use Timer A0 to safeguard I2C access for hangups. */
+static inline void
+TA0Init(void)
+{
+	/* Timer runs @ 1500Hz */
+	TA0CTL = TASSEL_1 + ID_3 + MC_0; // ACLK is source, divider /8, timer halted
+	TA0CCR0 = 750;	// .5 sec at this timer frequ.
+	TACCTL0 = CCIE; // Capture/Compare 0 Interrupt Enable
+}
+
+/** Start TA0 now. */
+static inline void
+TA0_START(void)
+{
+	PIN_outLow(P2, BIT1);
+    TA0R = 0;
+    TA0CTL |= MC0;
+}
+
+/** Stop TA0 now. */
+static inline void
+TA0_STOP(void)
+{
+	PIN_outLow(P2, BIT1);
+    TA0CTL &= ~MC0;
+}
+/** ISR for timer-based anti-beat */
+#pragma vector=TIMER0_A0_VECTOR
+__interrupt void TA0_A0_ISR(void) {
+	TA0_STOP();
+	i2c_fault = 1;
+	__bic_SR_register_on_exit(CPUOFF);	//exit LPM
+}
 
 void i2cSetup(int Adress){
 	// Pulse SCL 9 times to bring slave into defined state
@@ -35,7 +72,8 @@ void i2cSetup(int Adress){
 	UCB0I2CSA = Adress;				//set sensor's I2C address
 	UCB0CTL1 &= ~UCSWRST;				//start UCB0
 	IE2 |= UCB0TXIE + UCB0RXIE;		//enable TX and RX interrupts
-	return;
+
+	TA0Init();
 }
 
 static volatile unsigned char TransmittedData;
@@ -55,9 +93,9 @@ void i2cWrite(int Adress, int Value){
 	IE2 |= UCB0TXIE;			//... and set TX interrupt-enable
 
 	UCB0CTL1 |= UCTR + UCTXSTT;	//send START condition + address + Write
+	TA0_START();
 	__bis_SR_register(CPUOFF + GIE);	//go into a LPM and wait for ISR
-
-	// TODO use timer to wake up if slave does not respond
+	TA0_STOP();
 }
 
 volatile static unsigned char ReceivedData;
@@ -71,9 +109,13 @@ unsigned char i2cRequest(unsigned char Register){
 
 	while (UCB0CTL1 & UCTXSTP);		//ensure STOP condition was sent
 	UCB0CTL1 |= UCTR + UCTXSTT;		//send START condition + address + Write
+	TA0_START();
 	__bis_SR_register(CPUOFF + GIE);//go into a LPM and wait for ISR
+	TA0_STOP();
 
-	// TODO use timer to wake up if slave does not respond
+	if (i2c_fault) {
+		return 0;
+	}
 
 	while (UCB0CTL1 & UCTXSTP);		//ensure STOP was sent
 	return ReceivedData;
