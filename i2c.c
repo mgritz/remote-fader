@@ -10,17 +10,23 @@
 void i2cSetup(int Adress){
 	// Pulse SCL 9 times to bring slave into defined state
 
-    PIN_setModeGPO(P1, SCL | SDA);
-	for(int i = 9; i > 0; i--)
+	PIN_setModeGPO(P1, SCL);
+	PIN_setModeGPI_nopull(P1, SDA);
+	for (int i = 9; (i > 0) && (!PIN_readIn(P1, SDA)); i--)
 	{
 		PIN_outHigh(P1, SCL);
-		__delay_cycles(1);	// If F_CPU = 1MHz this should be equivalent to 250kHz.
+		__delay_cycles(1);// If F_CPU = 1MHz this should be equivalent to 250kHz.
 		PIN_outLow(P1, SCL);
 		__delay_cycles(1);
 	}
+	PIN_setModeGPO(P1, SDA);
+	PIN_outLow(P1, SDA);
+	PIN_outHigh(P1, SCL);
+	__delay_cycles(1);
+	PIN_outHigh(P1, SDA);
 
 	// Setup actual I2C module
-    PIN_setModePeriph(P1, SCL | SDA);
+    PIN_setModeSecPeriph(P1, SCL | SDA);
 	UCB0CTL1 |= UCSWRST;				//stop UCB0
 	UCB0CTL0 = UCMST + UCMODE_3 + UCSYNC;		//configure UCB0
 	UCB0CTL1 = UCSSEL_2 + UCSWRST;
