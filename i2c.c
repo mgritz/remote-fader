@@ -2,25 +2,25 @@
 
 #include <msp430.h>
 
+#include "port-helpers.h"
+
+#define SCL BIT6
+#define SDA BIT7
+
 void i2cSetup(int Adress){
 	// Pulse SCL 9 times to bring slave into defined state
-	P1SEL &= ~(BIT6 + BIT7);
-	P1SEL2 &= ~(BIT6 + BIT7);
-	P1OUT |= BIT6;
-	P1OUT &= ~BIT6;
-	P1DIR |= BIT6 + BIT7;
-	int i = 9;
-	for(i = 9; i > 0; i--)
+
+    PIN_setModeGPO(P1, SCL | SDA);
+	for(int i = 9; i > 0; i--)
 	{
-		P1OUT |= BIT6;
+		PIN_outHigh(P1, SCL);
 		__delay_cycles(1);	// If F_CPU = 1MHz this should be equivalent to 250kHz.
-		P1OUT &= ~BIT6;
+		PIN_outLow(P1, SCL);
 		__delay_cycles(1);
 	}
 
 	// Setup actual I2C module
-	P1SEL |= BIT6 + BIT7;				//declare P1.6 and P1.7 as I2c pins
-	P1SEL2 |= BIT6 + BIT7;
+    PIN_setModePeriph(P1, SCL | SDA);
 	UCB0CTL1 |= UCSWRST;				//stop UCB0
 	UCB0CTL0 = UCMST + UCMODE_3 + UCSYNC;		//configure UCB0
 	UCB0CTL1 = UCSSEL_2 + UCSWRST;

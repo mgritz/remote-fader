@@ -3,13 +3,14 @@
 #include "msp430g2553.h"
 #include "conf_MAX7300.h"
 #include "i2c.h"
+#include "port-helpers.h"
 
 void
 nixieSetup()
 {
 	// define nixie enable pin as output, turned off
-	P1OUT &= ~(BIT5);
-	P1DIR |= BIT5;
+    PIN_outLow(P1, BIT5);
+    PIN_setModeGPO(P1, BIT5);
 
 	// setup i2c driver
 	i2cSetup(MAX7300_SLAVE_ADDRESS);
@@ -25,9 +26,7 @@ nixieSetup()
 	i2cWrite(MAX7300_RA_CONFIG, 0x01);
 
 	// enable nixie supply
-	P1OUT |= BIT5;
-
-	//FIXME Add some guard timer around I2C accesses.
+	PIN_outHigh(P1, BIT5);
 }
 
 void
@@ -61,7 +60,7 @@ nixieWrite(uint8_t value)
 	}
 
 	// turn nixie power off
-	P1OUT &= ~BIT5;
+	PIN_outLow(P1, BIT5);
 
 	// disable all digits
 	i2cWrite(MAX7300_RA_P12TO19, 0x00);
@@ -73,5 +72,5 @@ nixieWrite(uint8_t value)
 	i2cWrite(lowDigitAddress, 0x01);
 
 	// turn nixie power back on
-	P1OUT |= BIT5;
+	PIN_outHigh(P1, BIT5);
 }

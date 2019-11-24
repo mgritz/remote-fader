@@ -44,12 +44,3 @@ main(void) {
     	lastFaderLevel = current_lvl;
     }
 }
-
-/* Uart und I2C funktionieren jeweils für sich.
- * Empfangener Fader-Level wird gelegentlich nicht verarbeitet. --> Ausführung von atoi prüfen.
- *
- * Timer Interrupts kommen nicht, bzw. werden getrappt. --> Bezeichnung der Vektoren prüfen.
- *
- * P2 Interrupts kommen "einfach so". Vermutlich wg. offener Klemmen.
- *
- */
