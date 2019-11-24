@@ -3,30 +3,6 @@
 #include "msp430g2553.h"
 #include "port-helpers.h"
 
-/** Timer TA0 is used for ALPS-knob debounce */
-static inline void
-TA0Init(void)
-{
-	/* Timer runs @ 1500Hz */
-	TA0CTL = TASSEL_1 + ID_3 + MC_0 + TAIE; // ACLK is source, divider /8, timer halted, periode interrupt one
-	TA0CCR0 = 150;	// 1/10 sec at this timer frequ.
-}
-
-/** Start TA0 now. */
-static inline void
-TA0_START(void)
-{
-    TA0R = 0;
-    TA0CTL |= MC0;
-}
-
-/** Stop TA0 now. */
-static inline void
-TA0_STOP(void)
-{
-    TA0CTL &= ~MC0;
-}
-
 static volatile int8_t increments = 0;
 
 /**ISR for Alps knob operation
@@ -43,8 +19,7 @@ static volatile int8_t increments = 0;
 __interrupt void Port_2(void){
 	// Disable interrupt until handling complete
 	BIT_unset(P2IE, BIT0);
-	// ebable anti-beat timer
-	TA0_START();
+	BIT_unset(P2IFG, BIT0);
 
 	const unsigned char input = PIN_readIn(P2, (BIT1 | BIT2));
 	/* count increments */
@@ -61,16 +36,12 @@ __interrupt void Port_2(void){
 			increments -= KNOB_INC_NORMAL;
 		}
 	}
-}
 
-/** ISR for timer-based anti-beat */
-#pragma vector=TIMER0_A0_VECTOR
-__interrupt void TA0_A0_ISR(void) {
-	TA0_STOP();
-	// Clear knob interrupt flag and reenable interrupt
-	BIT_unset(P2IFG, BIT0);
+	/* Halt for debounce and re-enable irq. */
+	__delay_cycles(100);
 	BIT_set(P2IE, BIT0);
 }
+
 
 void knobSetup(){
 	// Set up pins 2.0, 2.1 and 2.2 for digital input with pull-down resistors
