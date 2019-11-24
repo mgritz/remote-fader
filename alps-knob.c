@@ -1,6 +1,7 @@
 #include "alps-knob.h"
 
 #include "msp430g2553.h"
+#include "port-helpers.h"
 
 /** Timer TA0 is used for ALPS-knob debounce */
 static inline void
@@ -41,19 +42,20 @@ static volatile int8_t increments = 0;
 #pragma vector=PORT2_VECTOR
 __interrupt void Port_2(void){
 	// Disable interrupt until handling complete
-	P2IE &= ~BIT0;
+	BIT_unset(P2IE, BIT0);
 	// ebable anti-beat timer
 	TA0_START();
 
+	const unsigned char input = PIN_readIn(P2, (BIT1 | BIT2));
 	/* count increments */
-	if (P2IN & BIT2){
-		if (P2IN & BIT1){
+	if (input & BIT2){
+		if (input & BIT1){
 			increments += KNOB_INC_PRESSED;
 		} else {
 			increments += KNOB_INC_NORMAL;
 		}
-	} else if (~(P2IN & BIT2)){
-		if(P2IN & BIT1){
+	} else {
+		if (input & BIT1){
 			increments -= KNOB_INC_PRESSED;
 		} else {
 			increments -= KNOB_INC_NORMAL;
@@ -66,21 +68,17 @@ __interrupt void Port_2(void){
 __interrupt void TA0_A0_ISR(void) {
 	TA0_STOP();
 	// Clear knob interrupt flag and reenable interrupt
-	P2IFG &= ~BIT0;
-	P2IE |= BIT0;
+	BIT_unset(P2IFG, BIT0);
+	BIT_set(P2IE, BIT0);
 }
 
 void knobSetup(){
 	// Set up pins 2.0, 2.1 and 2.2 for digital input with pull-down resistors
-	P2SEL &= ~(BIT0 + BIT1 + BIT2);
-	P2SEL2 &= ~(BIT0 + BIT1 + BIT2);
-	P2DIR &= ~(BIT0 + BIT1 + BIT2);
-	P2REN |= (BIT0 + BIT1 + BIT2);
-	P2OUT &= ~(BIT0 + BIT1 + BIT2);
+	PIN_setModeGPI_pulldown(P2, (BIT0 | BIT1 | BIT2));
 	// Enable input interrupts for pin 2.0 only, clear interrupt flags
 	P2IE = BIT0;
-	P2IES |= BIT0;
-	P2IFG &= ~BIT0;
+	BIT_set(P2IES, BIT0);
+	BIG_unset(P2IFG, BIT0);
 
 	TA0Init();
 }
@@ -95,10 +93,10 @@ knob_get_changes(void)
     }
 
     /* disable interrupt for fetching */
-	P2IE &= ~BIT0;
+	BIT_unset(P2IE, BIT0);
 	retval = increments;
 	increments = 0;
-	P2IE |= BIT0;
+	BIT_set(P2IE, BIT0);
 	return retval;
 }
 
