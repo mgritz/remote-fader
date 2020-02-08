@@ -19,7 +19,6 @@ static volatile int8_t increments = 0;
 __interrupt void Port_2(void){
 	// Disable interrupt until handling complete
 	BIT_unset(P2IE, BIT0);
-	BIT_unset(P2IFG, BIT0);
 
 	const unsigned char input = PIN_readIn(P2, (BIT1 | BIT2));
 	/* count increments */
@@ -37,42 +36,30 @@ __interrupt void Port_2(void){
 		}
 	}
 
-	/* Halt for debounce and re-enable irq. */
-	__delay_cycles(100);
+	// Wait a little for debounce
+	__delay_cycles(100000);
+	// Re-enable interrupt
+	BIT_unset(P2IFG, BIT0);
 	BIT_set(P2IE, BIT0);
 }
 
 
-void knobSetup(){
+void knob_setup(){
 	// Set up pins 2.0, 2.1 and 2.2 for digital input with pull-down resistors
 	PIN_setModeGPI_pulldown(P2, (BIT0 | BIT1 | BIT2));
 	// Enable input interrupts for pin 2.0 only, clear interrupt flags
 	P2IE = BIT0;
 	BIT_set(P2IES, BIT0);
-	BIG_unset(P2IFG, BIT0);
-
-	TA0Init();
+	BIT_unset(P2IFG, BIT0);
 }
 
 int8_t
 knob_get_changes(void)
 {
-    int8_t retval = 0;
-    if (TA0CTL & MC0){
-        /* Debounce timer is running, come back later. */
-        return 0;
-    }
-
-    /* disable interrupt for fetching */
+	// disable interrupt for reading
 	BIT_unset(P2IE, BIT0);
-	retval = increments;
+	const int8_t retval = increments;
 	increments = 0;
 	BIT_set(P2IE, BIT0);
 	return retval;
-}
-
-bool
-knob_changed(void)
-{
-    return (increments != 0);
 }

@@ -3,6 +3,7 @@
 
 #include "nixie-disp.h"
 #include "ap20-ifc.h"
+#include "alps-knob.h"
 
 static inline void
 clockInit(void) {
@@ -29,6 +30,7 @@ main(void) {
 
     clockInit();
     ap20_init();
+    knob_setup();
     __enable_interrupt();
 
     while(1){
@@ -39,5 +41,10 @@ main(void) {
     		nixieWrite(current_lvl);
     	}
     	lastFaderLevel = current_lvl;
+
+    	const int8_t increments = knob_get_changes();
+    	if (increments != 0) {
+    		ap20_change_level(increments);
+    	}
     }
 }

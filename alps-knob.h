@@ -9,6 +9,5 @@
 
 void knob_setup(void);
 int8_t knob_get_changes(void);
-bool knob_changed(void);
 
 #endif /* include guard */
