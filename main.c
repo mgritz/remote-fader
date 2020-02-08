@@ -29,7 +29,6 @@ main(void) {
 
     clockInit();
     ap20_init();
-    nixieSetup();
     __enable_interrupt();
 
     while(1){

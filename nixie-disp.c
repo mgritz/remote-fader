@@ -8,8 +8,7 @@
 void
 nixieSetup()
 {
-	// define nixie enable pin as output, turned off
-    PIN_outLow(P1, BIT5);
+	// define nixie enable pin as output - should have been turned off before.
     PIN_setModeGPO(P1, BIT5);
 
 	// setup i2c driver
@@ -24,9 +23,6 @@ nixieSetup()
 
 	// get MAX7300 ready for action (Shutdown disabled, Transit detect off)
 	i2cWrite(MAX7300_RA_CONFIG, 0x01);
-
-	// enable nixie supply
-	PIN_outHigh(P1, BIT5);
 }
 
 void
@@ -61,6 +57,9 @@ nixieWrite(uint8_t value)
 
 	// turn nixie power off
 	PIN_outLow(P1, BIT5);
+
+	// reset the MAX7300 since we don't know its state
+	nixieSetup();
 
 	// disable all digits
 	i2cWrite(MAX7300_RA_P12TO19, 0x00);
