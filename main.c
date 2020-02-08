@@ -36,9 +36,7 @@ main(void) {
         ap20_process_bytes();
         const uint8_t current_lvl = ap20_current_level();
     	if(current_lvl != lastFaderLevel){
-    	    P2OUT &= ~BIT2;
     		nixieWrite(current_lvl);
-    	    P2OUT |= BIT2;
     	}
     	lastFaderLevel = current_lvl;
     }

@@ -39,7 +39,6 @@ ap20_process_bytes(void)
             else if(mwPos - magicWord == 6){
                 mwPos = magicWord;
                 ap20_state = NUMBER_STATE;
-                P2OUT &= ~BIT1;
             }
             break;
         case NUMBER_STATE:
@@ -48,7 +47,6 @@ ap20_process_bytes(void)
                 current_level = (char)(atoi(rxedNumber));
                 rxPos = rxedNumber;
                 ap20_state = LISTEN_STATE;
-                P2OUT |= BIT1;
             }
         }
     }

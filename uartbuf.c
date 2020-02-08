@@ -42,9 +42,6 @@ void UART_Init(void)
 
 	// enable RX interrupt
 	IE2 |= UCA0RXIE;
-
-	P2DIR |= BIT0 | BIT1 | BIT2;
-	P2OUT |= BIT0 | BIT1 | BIT2;
 }
 
 void UartPutChar(char character){
@@ -63,9 +60,7 @@ void UartPutStr(const char* const str, int length){
 #pragma vector=USCIAB0RX_VECTOR
 __interrupt void USCI0RX_ISR(void)
 {
-	P2OUT &= ~BIT0;
 	bbuf_put(&rx_buffer, UCA0RXBUF);
-	P2OUT |= BIT0;
 }
 
 bool UartGetNext(char* c)

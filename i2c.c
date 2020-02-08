@@ -24,7 +24,6 @@ TA0Init(void)
 static inline void
 TA0_START(void)
 {
-	PIN_outLow(P2, BIT1);
     TA0R = 0;
     TA0CTL |= MC0;
 }
@@ -33,7 +32,6 @@ TA0_START(void)
 static inline void
 TA0_STOP(void)
 {
-	PIN_outLow(P2, BIT1);
     TA0CTL &= ~MC0;
 }
 /** ISR for timer-based anti-beat */
