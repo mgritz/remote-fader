@@ -1,5 +1,6 @@
 #include "ap20-ifc.h"
 #include <stdlib.h>
+#include "itoa.h"
 #include "msp430g2553.h"
 #include "uartbuf.h"
 
@@ -23,7 +24,19 @@ ap20_init(void)
 void
 ap20_change_level(int8_t increments)
 {
+	char numString[6] = {0, };
+	const unsigned char usedBytes = itoa(increments, numString,
+	                                     sizeof(numString), ITOA_FORCESIGN);
 
+	// see if there were too many bytes encoded for some reason (bug)
+	if (usedBytes > sizeof(numString) - 2)
+		return;
+
+	// apply correct termination as the AP20 expects
+	numString[usedBytes] = '\r';
+
+	UartPutStr(magicWord, sizeof(magicWord));
+	UartPutStr(numString, usedBytes + 1);
 }
 
 void
