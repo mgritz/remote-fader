@@ -8,7 +8,7 @@
 void UART_Init(void);
 
 void UartPutChar(char character);
-void UartPutStr(char* str, int length);
+void UartPutStr(const char* const str, int length);
 
 bool UartGetNext(char* c);
 

@@ -52,7 +52,7 @@ void UartPutChar(char character){
 		UCA0TXBUF = character;
 }
 
-void UartPutStr(char* str, int length){
+void UartPutStr(const char* const str, int length){
 	int i = 0;
 	for(i=0;i<length;i++){
 		UartPutChar(str[i]);
