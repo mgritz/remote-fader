@@ -32,8 +32,8 @@ nixieWrite(uint8_t value)
 	char highDigit = 0;
 	char i = 9;
 	char tenI = 90;
-	char lowDigitAddress = MAX7300_RA_P22;
-	char highDigitAddress = MAX7300_RA_P12;
+	char lowDigitAddress = MAX7300_RA_P12;
+	char highDigitAddress = MAX7300_RA_P22;
 
 	/* split digits without division */
 	for(tenI = 90; tenI >= 0; tenI -= 10){
@@ -49,10 +49,10 @@ nixieWrite(uint8_t value)
 
 	// calculate digits to turn on
 	if(highDigit > 0){
-		highDigitAddress = MAX7300_RA_P21 + 1 - highDigit;
+		highDigitAddress = MAX7300_RA_P31 + 1 - highDigit;
 	}
 	if(lowDigit > 0){
-		lowDigitAddress = MAX7300_RA_P31 + 1 - lowDigit;
+		lowDigitAddress = MAX7300_RA_P21 + 1 - lowDigit;
 	}
 
 	// turn nixie power off
